@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Wind Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { background:#121212; color:white; text-align:center; font-family:Arial; }
+nav { background:#1e1e1e; padding:10px; }
+nav a { color:#00ffcc; margin:15px; text-decoration:none; }
+
+.card {
+    background:#1e1e1e;
+    padding:20px;
+    margin:20px;
+    border-radius:10px;
+}
+
+canvas { max-width:600px; max-height:300px; }
+</style>
+</head>
+
+<body>
+
+<nav>
+<a href="/">Dashboard</a>
+</nav>
+
+<h1>🌬️ Smart Wind Speed Dashboard</h1>
+
+<div class="card">
+<h2>📊 Live Wind Graph</h2>
+<canvas id="liveChart"></canvas>
+</div>
+
+<div class="card">
+<h2>📅 Last Year (Same Month)</h2>
+<canvas id="historyChart"></canvas>
+</div>
+
+<div class="card">
+<h2>Current Wind</h2>
+<p>{{ present_speed }} km/h</p>
+<p>{{ current_time }}</p>
+</div>
+
+<div class="card">
+<h2>Predicted Wind</h2>
+<p>{{ future_speed }} km/h</p>
+<p>{{ future_time }}</p>
+</div>
+
+<script>
+// Convert Flask data safely to JS
+const past_times = JSON.parse('{{ past_times | tojson | safe }}');
+const past_speeds = JSON.parse('{{ past_speeds | tojson | safe }}');
+
+const hist_times = JSON.parse('{{ hist_times | tojson | safe }}');
+const hist_speeds = JSON.parse('{{ hist_speeds | tojson | safe }}');
+
+// LIVE GRAPH
+new Chart(document.getElementById('liveChart'), {
+    type: 'line',
+    data: {
+        labels: past_times,
+        datasets: [{
+            label: "Wind Speed",
+            data: past_speeds,
+            borderColor: '#00ffcc',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true
+    }
+});
+
+// HISTORICAL GRAPH
+new Chart(document.getElementById('historyChart'), {
+    type: 'line',
+    data: {
+        labels: hist_times,
+        datasets: [{
+            label: "Last Year Wind",
+            data: hist_speeds,
+            borderColor: '#ffaa00',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true
+    }
+});
+setTimeout(() => location.reload(), 10000);
+</script>
+
+</body>
+</html>
