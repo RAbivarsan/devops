@@ -1,97 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Wind Dashboard</title>
+<meta charset="UTF-8">
+<title>Wind Speed Dashboard</title>
+
+<!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { background:#121212; color:white; text-align:center; font-family:Arial; }
-nav { background:#1e1e1e; padding:10px; }
-nav a { color:#00ffcc; margin:15px; text-decoration:none; }
+    body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: white;
+        text-align: center;
+        padding: 30px;
+    }
 
-.card {
-    background:#1e1e1e;
-    padding:20px;
-    margin:20px;
-    border-radius:10px;
-}
+    .dashboard {
+        background: #1e293b;
+        padding: 20px;
+        border-radius: 15px;
+        width: 350px;
+        margin: auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
 
-canvas { max-width:600px; max-height:300px; }
+    .value {
+        font-size: 30px;
+        margin: 10px 0;
+    }
+
+    .label {
+        font-size: 16px;
+        color: #94a3b8;
+    }
+
+    .status {
+        margin-top: 10px;
+        padding: 8px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+
+    .safe { background: green; }
+    .warning { background: orange; }
+    .danger { background: red; }
+
+    canvas {
+        margin-top: 20px;
+    }
 </style>
 </head>
 
 <body>
 
-<nav>
-<a href="/">Dashboard</a>
-</nav>
+<div class="dashboard">
+    <h2>Wind Dashboard</h2>
 
-<h1>🌬️ Smart Wind Speed Dashboard</h1>
+    <div class="label">Wind Speed</div>
+    <div class="value" id="speed">0 km/h</div>
 
-<div class="card">
-<h2>📊 Live Wind Graph</h2>
-<canvas id="liveChart"></canvas>
-</div>
+    <div class="label">Wind Direction</div>
+    <div class="value" id="direction">0°</div>
 
-<div class="card">
-<h2>📅 Last Year (Same Month)</h2>
-<canvas id="historyChart"></canvas>
-</div>
+    <div class="status safe" id="status">SAFE</div>
 
-<div class="card">
-<h2>Current Wind</h2>
-<p>{{ present_speed }} km/h</p>
-<p>{{ current_time }}</p>
-</div>
-
-<div class="card">
-<h2>Predicted Wind</h2>
-<p>{{ future_speed }} km/h</p>
-<p>{{ future_time }}</p>
+    <!-- Chart -->
+    <canvas id="windChart"></canvas>
 </div>
 
 <script>
-// Convert Flask data safely to JS
-const past_times = JSON.parse('{{ past_times | tojson | safe }}');
-const past_speeds = JSON.parse('{{ past_speeds | tojson | safe }}');
+let speedData = [];
+let labels = [];
 
-const hist_times = JSON.parse('{{ hist_times | tojson | safe }}');
-const hist_speeds = JSON.parse('{{ hist_speeds | tojson | safe }}');
+const ctx = document.getElementById('windChart').getContext('2d');
 
-// LIVE GRAPH
-new Chart(document.getElementById('liveChart'), {
+const windChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: past_times,
+        labels: labels,
         datasets: [{
-            label: "Wind Speed",
-            data: past_speeds,
-            borderColor: '#00ffcc',
-            tension: 0.4
+            label: 'Wind Speed (km/h)',
+            data: speedData,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.3
         }]
-    },
-    options: {
-        responsive: true
     }
 });
 
-// HISTORICAL GRAPH
-new Chart(document.getElementById('historyChart'), {
-    type: 'line',
-    data: {
-        labels: hist_times,
-        datasets: [{
-            label: "Last Year Wind",
-            data: hist_speeds,
-            borderColor: '#ffaa00',
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true
+async function fetchData() {
+    const res = await fetch('/api/data');
+    const data = await res.json();
+
+    let speed = data.speed;
+    let direction = data.direction;
+
+    document.getElementById("speed").innerText = speed + " km/h";
+    document.getElementById("direction").innerText = direction + "°";
+
+    let statusBox = document.getElementById("status");
+
+    if (speed < 20) {
+        statusBox.innerText = "SAFE";
+        statusBox.className = "status safe";
+    } else if (speed < 40) {
+        statusBox.innerText = "WARNING";
+        statusBox.className = "status warning";
+    } else {
+        statusBox.innerText = "DANGER";
+        statusBox.className = "status danger";
     }
-});
-setTimeout(() => location.reload(), 10000);
+
+    let time = data.time;
+
+    labels.push(time);
+    speedData.push(speed);
+
+    if (labels.length > 10) {
+        labels.shift();
+        speedData.shift();
+    }
+
+    windChart.update();
+}
+
+// 🔁 Auto refresh
+setInterval(fetchData, 2000);
 </script>
 
 </body>
