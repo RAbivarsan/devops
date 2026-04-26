@@ -55,17 +55,16 @@
 <body>
 
 <div class="dashboard">
-    <h2>Wind Dashboard</h2>
+    <h2>🌬 Wind Dashboard</h2>
 
     <div class="label">Wind Speed</div>
-    <div class="value" id="speed">0 km/h</div>
+    <div class="value" id="speed">Loading...</div>
 
     <div class="label">Wind Direction</div>
-    <div class="value" id="direction">0°</div>
+    <div class="value" id="direction">Loading...</div>
 
-    <div class="status safe" id="status">SAFE</div>
+    <div class="status safe" id="status">Checking...</div>
 
-    <!-- Chart -->
     <canvas id="windChart"></canvas>
 </div>
 
@@ -86,46 +85,73 @@ const windChart = new Chart(ctx, {
             fill: false,
             tension: 0.3
         }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                ticks: { color: "white" }
+            },
+            y: {
+                ticks: { color: "white" }
+            }
+        },
+        plugins: {
+            legend: {
+                labels: { color: "white" }
+            }
+        }
     }
 });
 
 async function fetchData() {
-    const res = await fetch('/api/data');
-    const data = await res.json();
+    try {
+        const res = await fetch('/api/data');
 
-    let speed = data.speed;
-    let direction = data.direction;
+        if (!res.ok) throw new Error("API error");
 
-    document.getElementById("speed").innerText = speed + " km/h";
-    document.getElementById("direction").innerText = direction + "°";
+        const data = await res.json();
 
-    let statusBox = document.getElementById("status");
+        let speed = data.speed;
+        let direction = data.direction;
 
-    if (speed < 20) {
-        statusBox.innerText = "SAFE";
-        statusBox.className = "status safe";
-    } else if (speed < 40) {
-        statusBox.innerText = "WARNING";
-        statusBox.className = "status warning";
-    } else {
-        statusBox.innerText = "DANGER";
-        statusBox.className = "status danger";
+        document.getElementById("speed").innerText = speed + " km/h";
+        document.getElementById("direction").innerText = direction + "°";
+
+        let statusBox = document.getElementById("status");
+
+        if (speed < 20) {
+            statusBox.innerText = "SAFE";
+            statusBox.className = "status safe";
+        } else if (speed < 40) {
+            statusBox.innerText = "WARNING";
+            statusBox.className = "status warning";
+        } else {
+            statusBox.innerText = "DANGER";
+            statusBox.className = "status danger";
+        }
+
+        let time = data.time;
+
+        labels.push(time);
+        speedData.push(speed);
+
+        if (labels.length > 10) {
+            labels.shift();
+            speedData.shift();
+        }
+
+        windChart.update();
+
+    } catch (error) {
+        console.error("Fetch error:", error);
+        document.getElementById("status").innerText = "Server Error";
+        document.getElementById("status").className = "status danger";
     }
-
-    let time = data.time;
-
-    labels.push(time);
-    speedData.push(speed);
-
-    if (labels.length > 10) {
-        labels.shift();
-        speedData.shift();
-    }
-
-    windChart.update();
 }
 
-// 🔁 Auto refresh
+// Run immediately + every 2 sec
+fetchData();
 setInterval(fetchData, 2000);
 </script>
 
